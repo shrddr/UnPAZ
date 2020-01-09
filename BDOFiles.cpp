@@ -112,7 +112,8 @@ uint32_t BDOFile::ExtractFileMask(std::string sFileMask, fs::path OutputPath)
 				FilePath /= it->sFilePath;
 			}
 
-			this->internalExtractFile(FilePath, this->GetPazName(it->uiPazNum), it->uiOffset, it->uiCompressedSize, it->uiOriginalSize);
+			auto path = this->GetPazName(it->uiPazNum);
+			this->internalExtractFile(FilePath, path, it->uiOffset, it->uiCompressedSize, it->uiOriginalSize);
 
 			if (bProgress) {
 				printProgress(); ///delete current line (progress bar)
@@ -330,10 +331,10 @@ fs::path BDOFile::GetPazName(uint32_t uiPazNum)
 ///Private functions
 void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize)
 {
-	if (!this->GetMobile()) {
-		if (uiCompressedSize % 8 != 0)
-			this->exitError(-4);
-	}
+	//if (!this->GetMobile()) {
+		//if (uiCompressedSize % 8 != 0)
+			//this->exitError(-4);
+	//}
 
 	///make sure that output folder exists
 	if (FilePath.has_parent_path() && !fs::exists(FilePath.parent_path())) {
@@ -396,26 +397,35 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 			if (encrypted == 0) exitError(-3);
 
 			ifsPazFile.read(reinterpret_cast<char *>(encrypted), uiCompressedSize);
-			this->ICEdecrypt(encrypted, decrypted, uiCompressedSize);
 
-			delete[] encrypted;
+			if (uiCompressedSize % 8 == 0) {
+				
+				this->ICEdecrypt(encrypted, decrypted, uiCompressedSize);
 
-			///check if data have header, valid header is 9 bytes long and contains:
-			///- ID (unit8_t) = 0x6E for uncompressed data or 0x6F for compressed data
-			///- data size (uint32_t)
-			///- original file size (unit32_t)
-			if ((decrypted[0] == 0x6F || decrypted[0] == 0x6E) && uiCompressedSize > 9) {
-				uint32_t uiSize = 0;
-				memcpy(&uiSize, decrypted + 1 + 4, 4);	///copy original file size from decrypted data
-				if (uiSize == uiOriginalSize) {			///We can consider data header as valid. Size in data header is the same as size in .meta/.paz file.
-					uint8_t *decompressed = new uint8_t[uiOriginalSize];
-					if (decompressed == 0) exitError(-3);
+				delete[] encrypted;
 
-					BDO::decompress(decrypted, decompressed);
-					delete[] decrypted;
-					decrypted = decompressed;
+				///check if data have header, valid header is 9 bytes long and contains:
+				///- ID (unit8_t) = 0x6E for uncompressed data or 0x6F for compressed data
+				///- data size (uint32_t)
+				///- original file size (unit32_t)
+				if ((decrypted[0] == 0x6F || decrypted[0] == 0x6E) && uiCompressedSize > 9) {
+					uint32_t uiSize = 0;
+					memcpy(&uiSize, decrypted + 1 + 4, 4);	///copy original file size from decrypted data
+					if (uiSize == uiOriginalSize) {			///We can consider data header as valid. Size in data header is the same as size in .meta/.paz file.
+						uint8_t *decompressed = new uint8_t[uiOriginalSize];
+						if (decompressed == 0) exitError(-3);
+
+						BDO::decompress(decrypted, decompressed);
+						delete[] decrypted;
+						decrypted = decompressed;
+					}
 				}
 			}
+			else {
+				delete[] decrypted;
+				decrypted = encrypted;
+			}
+			
 		} else {
 			ifsPazFile.read(reinterpret_cast<char *>(decrypted), uiCompressedSize);
 
