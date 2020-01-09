@@ -39,3 +39,4 @@
 *.vcxproj
 *.filters
 *.user
+/Release

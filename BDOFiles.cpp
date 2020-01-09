@@ -1,4 +1,4 @@
-#if _MSC_VER >= 1910
+#if _MSC_VER >= 1910 && _MSC_VER < 1924
 #include "BDOFiles-exp.h"
 
 namespace fs = std::experimental::filesystem;
@@ -398,7 +398,14 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 
 			ifsPazFile.read(reinterpret_cast<char *>(encrypted), uiCompressedSize);
 
-			if (uiCompressedSize % 8 == 0) {
+			if (FilePath.extension().string() == std::string(".dbss")) {
+				delete[] decrypted;
+				decrypted = encrypted;
+			} else {
+				
+				if (uiCompressedSize % 8 != 0) {
+					this->exitError(-4);
+				}
 				
 				this->ICEdecrypt(encrypted, decrypted, uiCompressedSize);
 
@@ -421,10 +428,7 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 					}
 				}
 			}
-			else {
-				delete[] decrypted;
-				decrypted = encrypted;
-			}
+
 			
 		} else {
 			ifsPazFile.read(reinterpret_cast<char *>(decrypted), uiCompressedSize);
