@@ -1,9 +1,10 @@
 #include "Utility.h"
 
 
-#if _MSC_VER >= 1910
+#if _MSC_VER >= 1910 && _MSC_VER < 1924
 namespace fs = std::experimental::filesystem;
 #else
+#include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 #endif
 
@@ -221,7 +222,7 @@ char createPathPrompt(fs::path &FilePath)
 	std::string sUserInput;
 	char c;
 
-#if _MSC_VER >= 1910 ///std::experimental::filesystem doesn't have implemented boost::filesystem::relative function, using alternative:
+#if _MSC_VER >= 1910 && _MSC_VER < 1924 ///std::experimental::filesystem doesn't have implemented boost::filesystem::relative function, using alternative:
 	std::cerr << "\nPath \"" << relativePathTo(fs::current_path(), FilePath.parent_path()) << "\" doesn't exist. Create?\n (Y)es / (a)lways / (s)kip file / (e)xit " << std::endl;
 #else
 	std::cerr << "\nPath \"" << fs::relative(FilePath.parent_path()).string() << "\" doesn't exist.\n>Create path? (Y)es / (a)lways / (s)kip file / (e)xit " << std::endl;
@@ -249,7 +250,7 @@ char createPathPrompt(fs::path &FilePath)
 	}
 }
 
-#if _MSC_VER >= 1910 ///std::experimental::filesystem doesn't have implemented boost::filesystem::relative function, here is alternative:
+#if _MSC_VER >= 1910 && _MSC_VER < 1924 ///std::experimental::filesystem doesn't have implemented boost::filesystem::relative function, here is alternative:
 ///returns relative path (source: https://stackoverflow.com/a/29221546)
 static fs::path relativePathTo(fs::path from, fs::path to)
 {

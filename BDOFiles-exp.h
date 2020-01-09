@@ -79,7 +79,7 @@ namespace BDO
         bool bOverwriteFiles;
         bool bCreatePath;
 		bool bMobile;
-        std::experimental::filesystem::path ArchivePath;
+		std::experimental::filesystem::path ArchivePath;
 	};
 
 

@@ -1,7 +1,7 @@
 #include "UnPAZ.h"
 #include "Utility.h"
 
-#if _MSC_VER >= 1910
+#if _MSC_VER >= 1910 && _MSC_VER < 1924
 #include "BDOFiles-exp.h"
 
 namespace fs = std::experimental::filesystem;

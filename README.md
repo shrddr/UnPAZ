@@ -1,5 +1,5 @@
-# Garkin's UnPAZ v1.2
-Tool for extracting Black Desert Online archives.  
+# Garkin's UnPAZ v1.3
+Tool for extracting Black Desert Online archives.
 
 ### UnPAZ \<input file\> \<commands\>  
 

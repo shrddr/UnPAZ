@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+/Debug
+/x64/Debug
+/CppProperties.json
+/.vs
+*.sln
+*.vcxproj
+*.filters
+*.user
