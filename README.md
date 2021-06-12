@@ -1,5 +1,3 @@
-Unpacks PAZ archives
-
 ### unpaz \<input file\> \<commands\>  
 
 *\<input file\>*:  name of .meta or .paz file (default: pad00000.meta)  
@@ -14,8 +12,12 @@ Unpacks PAZ archives
 
 ### Examples:  
 ```
-unpaz pad00001.paz -f *.luac   
-unpaz pad00000.meta -y -f *languagedata_??.txt -o Extracted  
-unpaz D:\Games\BlackDesert\Paz\pad00000.meta -l  
+unpaz pad00001.paz -f *.luac
+```
+```
+unpaz pad00000.meta -y -f *languagedata_??.txt -o Extracted
+```
+```
+unpaz D:\Games\BlackDesert\Paz\pad00000.meta -l
 ```
 
