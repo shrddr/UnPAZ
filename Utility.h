@@ -7,6 +7,10 @@
 #include <cstdio>
 #include <time.h>
 
+//#include <filesystem>
+#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
+#include <experimental/filesystem>
+
 
 ///printf formatting for std::string
 ///If you need "width" argument in pattern, use this instead of boost::format
@@ -33,7 +37,7 @@ std::string getProgressString(uint32_t current, uint32_t maximum, std::string te
 std::string getProgressString();
 
 
-#if _MSC_VER >= 1910 && _MSC_VER < 1924 ///Visual Studio 2017 has implemented std::experimental::filesystem, use it instead of boost libraries.
+#if _MSC_VER >= 1910 ///Visual Studio 2017 has implemented std::experimental::filesystem, use it instead of boost libraries.
 #include <filesystem>
 
 /// automatically rename file (it adds [] to the end of file name)
