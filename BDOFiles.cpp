@@ -331,6 +331,7 @@ fs::path BDOFile::GetPazName(uint32_t uiPazNum)
 void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize)
 {
 	bool skip_decryption = FilePath.extension() == ".dbss";
+
 	if (!this->GetMobile()) {
 		if (uiCompressedSize % 8 != 0)
 			if (!skip_decryption)
@@ -355,111 +356,128 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 	if (uiCompressedSize == 0) { //just create empty file
 		std::ofstream ofsFile(FilePath.string(), std::ios::binary);
 		ofsFile.close();
+		return;
 	}
-	else {
-		std::ifstream ifsPazFile(PazName.string(), std::ios::binary);
-		if (!ifsPazFile.is_open()) {
-			this->exitError(-2, PazName.string());
-		}
+	
+	std::ifstream ifsPazFile(PazName.string(), std::ios::binary);
+	if (!ifsPazFile.is_open()) {
+		this->exitError(-2, PazName.string());
+	}
 
-		///check if output file exists, ask user if he wants to overwrite it
-		if (!this->bOverwriteFiles) {
-			if (fs::exists(FilePath)) {
-				if (this->bRenameFiles) {
-					autoRenameFile(FilePath);
-				}
-				else {
-					switch (autoRenameFilePrompt(FilePath)) { ///options: (o)verwrite / (R)ename / overwrite (a)ll / re(n)ame all / (e)xit
-					case 'e':
-						exit(0);
-					case 'a':
-						this->bOverwriteFiles = true;
-						break;
-					case 'n':
-						this->bRenameFiles = true;
-					}
-				}
+	///check if output file exists, ask user if he wants to overwrite it
+	if (!this->bOverwriteFiles) {
+		if (fs::exists(FilePath)) {
+			if (this->bRenameFiles) {
+				autoRenameFile(FilePath);
 			}
-		}
-
-		std::ofstream ofsFile(FilePath.string(), std::ios::binary);
-		if (!ofsFile.is_open()) {
-			this->exitError(-2, FilePath.string());
-		}
-
-		///decrypt data
-		uint8_t *decrypted = new uint8_t[uiCompressedSize];
-		if (decrypted == 0) exitError(-3);
-
-		ifsPazFile.seekg(uiOffset);
-
-		if (skip_decryption)
-		{
-			uint8_t* buf = new uint8_t[uiCompressedSize];
-			ifsPazFile.read(reinterpret_cast<char*>(buf), uiCompressedSize);
-			ofsFile.write(reinterpret_cast<char*>(buf), uiOriginalSize);
-			ofsFile.close();
-			delete[] buf;
-			return;
-		}
-
-		if (!this->GetMobile()) {
-			uint8_t *encrypted = new uint8_t[uiCompressedSize];
-			if (encrypted == 0) exitError(-3);
-
-			ifsPazFile.read(reinterpret_cast<char *>(encrypted), uiCompressedSize);
-			this->ICEdecrypt(encrypted, decrypted, uiCompressedSize);
-
-			delete[] encrypted;
-
-			///check if data have header, valid header is 9 bytes long and contains:
-			///- ID (unit8_t) = 0x6E for uncompressed data or 0x6F for compressed data
-			///- data size (uint32_t)
-			///- original file size (unit32_t)
-			if ((decrypted[0] == 0x6F || decrypted[0] == 0x6E) && uiCompressedSize > 9) {
-				uint32_t uiSize = 0;
-				memcpy(&uiSize, decrypted + 1 + 4, 4);	///copy original file size from decrypted data
-				if (uiSize == uiOriginalSize) {			///We can consider data header as valid. Size in data header is the same as size in .meta/.paz file.
-					uint8_t *decompressed = new uint8_t[uiOriginalSize];
-					if (decompressed == 0) exitError(-3);
-
-					BDO::decompress(decrypted, decompressed);
-					delete[] decrypted;
-					decrypted = decompressed;
+			else {
+				switch (autoRenameFilePrompt(FilePath)) { ///options: (o)verwrite / (R)ename / overwrite (a)ll / re(n)ame all / (e)xit
+				case 'e':
+					exit(0);
+				case 'a':
+					this->bOverwriteFiles = true;
+					break;
+				case 'n':
+					this->bRenameFiles = true;
 				}
 			}
-			if (decrypted[0] == 0xEF) {
-				std::cerr << "not implemented";
-				exit(-1);
-			}
-		} else {
-			ifsPazFile.read(reinterpret_cast<char *>(decrypted), uiCompressedSize);
+		}
+	}
 
-			if (uiOriginalSize != uiCompressedSize) {
+	std::ofstream ofsFile(FilePath.string(), std::ios::binary);
+	if (!ofsFile.is_open()) {
+		this->exitError(-2, FilePath.string());
+	}
+
+	ifsPazFile.seekg(uiOffset);
+
+	if (skip_decryption)
+	{
+		uint8_t* buf = new uint8_t[uiCompressedSize];
+		ifsPazFile.read(reinterpret_cast<char*>(buf), uiCompressedSize);
+		ofsFile.write(reinterpret_cast<char*>(buf), uiOriginalSize);
+		ofsFile.close();
+		delete[] buf;
+		return;
+	}
+
+	///decrypt data
+	uint8_t* decrypted = new uint8_t[uiCompressedSize];
+	if (decrypted == 0) exitError(-3);
+
+	if (!this->GetMobile()) {
+
+		uint8_t* encrypted = new uint8_t[uiCompressedSize];
+		if (encrypted == 0) exitError(-3);
+
+		ifsPazFile.read(reinterpret_cast<char*>(encrypted), uiCompressedSize);
+		this->ICEdecrypt(encrypted, decrypted, uiCompressedSize);
+
+		delete[] encrypted;
+
+		///check if data have header, valid header is 9 bytes long and contains:
+		///- ID (unit8_t) = 0x6E for uncompressed data or 0x6F for compressed data
+		///- data size (uint32_t)
+		///- original file size (unit32_t)
+		if ((decrypted[0] == 0x6F || decrypted[0] == 0x6E) && uiCompressedSize > 9) {
+			uint32_t uiSize = 0;
+			memcpy(&uiSize, decrypted + 1 + 4, 4);	///copy original file size from decrypted data
+			if (uiSize == uiOriginalSize) {			///We can consider data header as valid. Size in data header is the same as size in .meta/.paz file.
 				uint8_t *decompressed = new uint8_t[uiOriginalSize];
 				if (decompressed == 0) exitError(-3);
 
-				int result = uncompress(decompressed, reinterpret_cast<uLongf *>(&uiOriginalSize), decrypted, uiCompressedSize);
-
-				if (result == Z_OK) {
-					delete[] decrypted;
-					decrypted = decompressed;
-				} else if (result == Z_MEM_ERROR) {
-					exitError(-5, "zlib - Not enough memory.");
-				} else if (result == Z_BUF_ERROR) {
-					exitError(-5, "zlib - Output buffer is too small.");
-				} else if (result == Z_DATA_ERROR) {
-					exitError(-5, "zlib - Input data are corrupted or incomplete.");
-				}
+				BDO::decompress(decrypted, decompressed);
+				delete[] decrypted;
+				decrypted = decompressed;
 			}
 		}
 
+		if (decrypted[0] == 0xEF) {
+			uint32_t comp_len = 0;
+			memcpy(&comp_len, decrypted + 1, 4);
+			uint32_t decomp_len = 0;
+			memcpy(&decomp_len, decrypted + 1 + 4, 4);
+			if (decomp_len == uiOriginalSize) {
+				uint8_t* decompressed = new uint8_t[uiOriginalSize];
+				if (decompressed == 0) 
+					exitError(-3);
 
-		ofsFile.write(reinterpret_cast<char *>(decrypted), uiOriginalSize);
-		ofsFile.close();
+				uint32_t ret = BDO::decompressEF(decrypted+9, decompressed, uiOriginalSize);
+				if (ret != comp_len - 9)
+					exitError(-4);
+				delete[] decrypted;
+				decrypted = decompressed;
+			}
+		}
 
-		delete[] decrypted;
+	} else {
+		ifsPazFile.read(reinterpret_cast<char *>(decrypted), uiCompressedSize);
+
+		if (uiOriginalSize != uiCompressedSize) {
+			uint8_t *decompressed = new uint8_t[uiOriginalSize];
+			if (decompressed == 0) exitError(-3);
+
+			int result = uncompress(decompressed, reinterpret_cast<uLongf *>(&uiOriginalSize), decrypted, uiCompressedSize);
+
+			if (result == Z_OK) {
+				delete[] decrypted;
+				decrypted = decompressed;
+			} else if (result == Z_MEM_ERROR) {
+				exitError(-5, "zlib - Not enough memory.");
+			} else if (result == Z_BUF_ERROR) {
+				exitError(-5, "zlib - Output buffer is too small.");
+			} else if (result == Z_DATA_ERROR) {
+				exitError(-5, "zlib - Input data are corrupted or incomplete.");
+			}
+		}
 	}
+
+
+	ofsFile.write(reinterpret_cast<char *>(decrypted), uiOriginalSize);
+	ofsFile.close();
+
+	delete[] decrypted;
+	
 }
 
 

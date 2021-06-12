@@ -2,6 +2,10 @@
 
 #include "BDO.h"
 
+typedef  unsigned __int16 _WORD;
+typedef unsigned int _DWORD;
+typedef  unsigned __int64 _QWORD;
+
 namespace BDO
 {
 	/// Decompress codes from quickbms, refined by kukdh1. Comments are mostly mine.
@@ -182,6 +186,155 @@ namespace BDO
 		}
 
 		return length;
+	}
+
+	// from bdoevolution client
+	uint32_t decompressEF(uint8_t* src, uint8_t* dst, int decomp_len)
+	{
+		int v3; // ebp
+		uint8_t* src_cursor; // rbx
+		uint8_t* dst_end; // rsi
+		uint8_t* dst_cursor; // r9
+		__int64 result; // rax
+		unsigned int src_DWORD; // eax
+		char src_BYTE0; // r11
+		unsigned __int64 good_len; // rdi
+		__int64 v11; // rax
+		uint8_t* dst_bad_start; // r10
+		signed __int64 v13; // rcx
+		uint8_t* src_bad_start; // rbx
+		__int64 byte0L; // r11
+		__int64 rollback; // r9
+		uint8_t* dst_rolledback_ptr; // rdx
+		__int64 v19; // rcx
+		unsigned __int64 bad_len; // r11
+		uint8_t* dst_bad_end; // r10
+		uint8_t* v22; // rdx
+		uint8_t* dst_rolledback_plus; // rdx
+		__int64 dst_rolledback_dataQWORD; // rax
+		uint8_t* dst_bad_start_plus8; // r8
+		uint8_t* v26; // r9
+		uint8_t* v27; // rcx
+		signed __int64 v28; // rax
+		unsigned __int64 v29; // rcx
+		unsigned __int64 v30; // r9
+		uint8_t* v31; // rcx
+		signed __int64 v32; // rdx
+		int v33[8] = { 0, 1, 2, 1, 4, 4, 4, 4 }; // [rsp+20h] [rbp-58h]
+		int v36[8] = { 0, 0, 0, -1, 0, 1, 2, 3 }; // [rsp+40h] [rbp-38h]
+
+		v3 = (int)src;
+		src_cursor = src;
+		dst_end = &dst[decomp_len];
+		dst_cursor = dst;
+
+		while (true)
+		{
+			src_DWORD = *src_cursor++;
+			src_BYTE0 = src_DWORD;
+			byte0L = src_BYTE0 & 0xF;
+			good_len = (unsigned __int64)src_DWORD >> 4;
+			if (good_len == 0xF)
+			{
+				do
+				{
+					v11 = *src_cursor++;
+					good_len += v11;
+				} while ((_DWORD)v11 == 255);
+			}
+			dst_bad_start = dst_cursor + good_len;
+			if (&dst_cursor[good_len] > dst_end - 8)
+				break;
+			v13 = src_cursor - dst_cursor;
+			do
+			{
+				*(_QWORD*)dst_cursor = *(_QWORD*)&dst_cursor[v13];
+				dst_cursor += 8;
+			} while (dst_cursor < dst_bad_start);
+			src_bad_start = src_cursor + good_len;
+			rollback = *(_WORD*)src_bad_start;
+			src_cursor = src_bad_start + 2;
+			dst_rolledback_ptr = dst_bad_start - rollback;
+			*(_DWORD*)dst_bad_start = rollback;
+			if (byte0L == 0xF)
+			{
+				do
+				{
+					v19 = *src_cursor++;
+					byte0L += v19;
+				} while ((_DWORD)v19 == 255);
+			}
+			bad_len = byte0L + 4;
+			dst_bad_end = dst_bad_start + bad_len;
+			if (rollback >= 8)
+			{
+				dst_rolledback_dataQWORD = *(_QWORD*)dst_rolledback_ptr;
+				dst_rolledback_plus = dst_rolledback_ptr + 8;
+				*(_QWORD*)dst_bad_start = dst_rolledback_dataQWORD;
+			}
+			else
+			{
+				*(_DWORD*)dst_bad_start = *(_DWORD*)dst_rolledback_ptr;
+				v22 = dst_rolledback_ptr + v33[rollback];
+				*((_DWORD*)dst_bad_start + 1) = *(_DWORD*)v22;
+				dst_rolledback_plus = v22 - v36[rollback];
+			}
+			dst_bad_start_plus8 = dst_bad_start + 8;
+			if (dst_bad_end <= (dst_end - 12))
+			{
+				// this writes at least 16 bytes on each cycle, which is more than needed,
+				// but everything extra will be re-written by actual bytes on next cycle
+				*(_QWORD*)dst_bad_start_plus8 = *(_QWORD*)dst_rolledback_plus;
+				if (bad_len > 0x10)
+				{
+					v31 = dst_bad_start_plus8 + 8;
+					v32 = dst_rolledback_plus - (dst_bad_start_plus8 + 8);
+					do
+					{
+						*(_QWORD*)v31 = *(_QWORD*)(v31 + v32 + 8);
+						v31 += 8;
+					} while (v31 < dst_bad_end);
+				}
+				goto LABEL_29;
+			}
+			v26 = dst_end - 7;
+			if (dst_bad_end > (dst_end - 5))
+				return (v3 - (_DWORD)src_cursor - 1);
+			if (dst_bad_start_plus8 < v26)
+			{
+				v27 = dst_bad_start_plus8;
+				do
+				{
+					*(_QWORD*)v27 = *(_QWORD*)&v27[dst_rolledback_plus - dst_bad_start_plus8];
+					v27 += 8;
+				} while (v27 < v26);
+				v28 = v26 - dst_bad_start_plus8;
+				dst_bad_start_plus8 = dst_end - 7;
+				dst_rolledback_plus += v28;
+			}
+			v29 = 0i64;
+			v30 = dst_bad_end - dst_bad_start_plus8;
+			if (dst_bad_start_plus8 > dst_bad_end)
+				v30 = 0i64;
+			if (v30)
+			{
+				do
+				{
+					++v29;
+					*dst_bad_start_plus8++ = *dst_rolledback_plus++;
+				} while (v29 < v30);
+				dst_cursor = dst_bad_end;
+			}
+			else
+			{
+			LABEL_29:
+				dst_cursor = dst_bad_end;
+			}
+		}
+		if (dst_bad_start != dst_end)
+			return v3 - (_DWORD)src_cursor - 1;
+		memcpy(dst_cursor, src_cursor, good_len);
+		return (_DWORD)src_cursor + good_len - v3;
 	}
 
 /*
