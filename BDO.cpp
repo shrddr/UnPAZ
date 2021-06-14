@@ -203,7 +203,7 @@ namespace BDO
 		uint8_t* dst_bad_start; // r10
 		signed __int64 v13; // rcx
 		uint8_t* src_bad_start; // rbx
-		__int64 byte0L; // r11
+		__int64 bad_saved_len; // r11
 		__int64 rollback; // r9
 		uint8_t* dst_rolledback_ptr; // rdx
 		__int64 v19; // rcx
@@ -230,10 +230,17 @@ namespace BDO
 
 		while (true)
 		{
+			// 0x71 header means:
+			// 7 non-packed bytes (good block) and then
+			// a packed (bad block), which becomes L=1 bytes longer 
+			// after decompression (4 bytes -> 5 bytes)
 			src_DWORD = *src_cursor++;
 			src_BYTE0 = src_DWORD;
-			byte0L = src_BYTE0 & 0xF;
+			bad_saved_len = src_BYTE0 & 0xF;
 			good_len = (unsigned __int64)src_DWORD >> 4;
+
+			// if good block is longer than 15 bytes,
+			// use additional bytes to store length
 			if (good_len == 0xF)
 			{
 				do
@@ -245,26 +252,37 @@ namespace BDO
 			dst_bad_start = dst_cursor + good_len;
 			if (&dst_cursor[good_len] > dst_end - 8)
 				break;
+
+			// copy good block, dst <- src
 			v13 = src_cursor - dst_cursor;
 			do
 			{
 				*(_QWORD*)dst_cursor = *(_QWORD*)&dst_cursor[v13];
 				dst_cursor += 8;
 			} while (dst_cursor < dst_bad_start);
+
+			// rollback record, WORD
+			// commands to step back N bytes in dst
+			// und append L bytes from there to dst
 			src_bad_start = src_cursor + good_len;
 			rollback = *(_WORD*)src_bad_start;
 			src_cursor = src_bad_start + 2;
 			dst_rolledback_ptr = dst_bad_start - rollback;
+
+			// add 2 zero bytes after rollback record
 			*(_DWORD*)dst_bad_start = rollback;
-			if (byte0L == 0xF)
+
+			// if bad block saves more than 15 bytes,
+			// use additional bytes to store length
+			if (bad_saved_len == 0xF)
 			{
 				do
 				{
 					v19 = *src_cursor++;
-					byte0L += v19;
+					bad_saved_len += v19;
 				} while ((_DWORD)v19 == 255);
 			}
-			bad_len = byte0L + 4;
+			bad_len = bad_saved_len + 4;
 			dst_bad_end = dst_bad_start + bad_len;
 			if (rollback >= 8)
 			{
@@ -274,7 +292,10 @@ namespace BDO
 			}
 			else
 			{
-				*(_DWORD*)dst_bad_start = *(_DWORD*)dst_rolledback_ptr;
+				*dst_bad_start = *dst_rolledback_ptr;
+				dst_bad_start[1] = dst_rolledback_ptr[1];
+				dst_bad_start[2] = dst_rolledback_ptr[2];
+				dst_bad_start[3] = dst_rolledback_ptr[3];
 				v22 = dst_rolledback_ptr + v33[rollback];
 				*((_DWORD*)dst_bad_start + 1) = *(_DWORD*)v22;
 				dst_rolledback_plus = v22 - v36[rollback];
