@@ -37,19 +37,19 @@ std::string getProgressString(uint32_t current, uint32_t maximum, std::string te
 std::string getProgressString();
 
 
-#if _MSC_VER >= 1910 ///Visual Studio 2017 has implemented std::experimental::filesystem, use it instead of boost libraries.
+#if _MSC_VER >= 1910 ///Visual Studio 2017 has implemented std::filesystem, use it instead of boost libraries.
 #include <filesystem>
 
 /// automatically rename file (it adds [] to the end of file name)
-void autoRenameFile(std::experimental::filesystem::path &FilePath);
+void autoRenameFile(std::filesystem::path &FilePath);
 ///ask if you want to automatically rename file (it adds [] to the end of file name)
 ///returns char which option was selected - (y)es / (N)o / (a)lways / ne(v)er / (e)xit
-char autoRenameFilePrompt(std::experimental::filesystem::path &FilePath);
+char autoRenameFilePrompt(std::filesystem::path &FilePath);
 ///Ask if you want to create directories needed for file specified in FilePath.
 ///returns char which option was selected - (Y)es / (a)lways / (s)kip file / (e)xit
-char createPathPrompt(std::experimental::filesystem::path &FilePath);
+char createPathPrompt(std::filesystem::path &FilePath);
 ///returns path relative to current path (because eperimental::filesystem doesn't have implemented boost::filesystem::relative)
-std::experimental::filesystem::path relativePathTo(std::experimental::filesystem::path from, std::experimental::filesystem::path to);
+std::filesystem::path relativePathTo(std::filesystem::path from, std::filesystem::path to);
 
 #else ///in other compilers we will rely on boost libraries
 #include <boost/filesystem.hpp>    ///boost headers (for GCC add linker arguments: -lboost_system-mt -lboost_filesystem-mt)

@@ -1,10 +1,10 @@
 #include "UnPAZ.h"
 #include "Utility.h"
 
-#if _MSC_VER >= 1910 && _MSC_VER < 1924
+#if _MSC_VER >= 1910
 #include "BDOFiles-exp.h"
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 #else
 #include "BDOFiles-boost.h"
 
@@ -21,12 +21,12 @@ namespace {
 	bool bNoFolders = false;
 	bool bYesToAll = false;
 	bool bQuiet = false;
-
+	bool bCompressed = false;
 
 	///print version header
 	void printVersion()
 	{
-		cout << "Garkin's UnPAZ v1.2 - tool for extracting Black Desert Online archives.\n";
+		cout << "Garkin's UnPAZ v1.4 - tool for extracting Black Desert Online archives.\n";
 	}
 
 	///print help text
@@ -42,8 +42,9 @@ namespace {
 			"  -h:  Print this help text\n" <<
 			"  -l:  List file names without extracting them.\n" <<
 			"  -n:  No folder structure, extract files directly to output folder.\n" <<
-			"  -y:  Yes to all questions(creating folders, overwritting files).\n" <<
-			"  -q:  Quiet(limit printed messages to file names)\n\n" <<
+			"  -y:  Yes to all questions (creating folders, overwritting files).\n" <<
+			"  -q:  Quiet (limit printed messages to file names).\n" <<
+			"  -c:  Compressed (decrypt only, don't decompress).\n\n" <<
 			"Examples:\n" <<
 			"  UnPAZ pad00001.paz -f *.luac \n" <<
 			"  UnPAZ pad00000.meta -y -n -f *languagedata_??.txt -o Extracted\n" <<
@@ -107,6 +108,9 @@ namespace {
 					case 'q': ///quiet
 						bQuiet = true;
 						break;
+					case 'c': ///quiet
+						bCompressed = true;
+						break;
 					}
 				}
 				else {
@@ -150,6 +154,7 @@ int main(int argc, char **argv)
 		BDO::MetaFile MetaFile(SourcePath, bQuiet);
 
 		MetaFile.SetQuiet(bQuiet);
+		MetaFile.SetCompressed(bCompressed);
 		MetaFile.SetNoFolders(bNoFolders);
 		MetaFile.SetYesToAll(bYesToAll);
 
@@ -185,7 +190,6 @@ int main(int argc, char **argv)
 		cerr << "ERROR: Input file must have extension .meta or .paz. File extension " << SourcePath.extension().string() << " is not supported." << endl;
 		exit(-1);
 	}
-
 
 	return 0;
 }

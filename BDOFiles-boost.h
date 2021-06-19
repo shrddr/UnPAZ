@@ -50,6 +50,8 @@ namespace BDO
 		uint32_t ListFileMask(std::string sFileMask);
 		bool GetQuiet();
 		void SetQuiet(bool bQuiet);
+		bool GetCompressed();
+		void SetCompressed(bool bCompressed);
 		bool GetNoFolders();
 		void SetNoFolders(bool bNoFolders);
 		bool GetYesToAll();
@@ -70,13 +72,14 @@ namespace BDO
 		std::map<uint32_t, boost::filesystem::path> mPazNames;
 	private:
 		///functions
-		void internalExtractFile(boost::filesystem::path FilePath, boost::filesystem::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize);
+		bool internalExtractFile(boost::filesystem::path FilePath, boost::filesystem::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize);
 		///variables
 		bool bQuiet;
 		bool bNoFolders;
 		bool bYesToAll;
 		bool bRenameFiles;
 		bool bOverwriteFiles;
+		bool bSkipFiles;
 		bool bCreatePath;
 		bool bMobile;
 		boost::filesystem::path ArchivePath;

@@ -1,7 +1,8 @@
+#include "Encoding.h"
 #if _MSC_VER >= 1910
 #include "BDOFiles-exp.h"
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 #else
 #include "BDOFiles-boost.h"
 
@@ -34,6 +35,7 @@ BDOFile::BDOFile() :
 	bYesToAll(false),
 	bRenameFiles(false),
 	bOverwriteFiles(false),
+	bSkipFiles(false),
 	bCreatePath(false),
 	bMobile(false),
 	vFilesTable(),
@@ -53,7 +55,8 @@ void BDOFile::ExtractFile(fs::path FilePath, fs::path PazName, uint32_t uiOffset
 uint32_t BDOFile::ExtractFileMask(std::string sFileMask, fs::path OutputPath)
 {
 	std::vector<FileEntry>::iterator it;
-	uint32_t counter = 0;
+	uint32_t count_filtered = 0;
+	uint32_t count_written = 0;
 	bool bProgress = false;
 	bool bIsQuiet = bQuiet;
 
@@ -107,22 +110,26 @@ uint32_t BDOFile::ExtractFileMask(std::string sFileMask, fs::path OutputPath)
 			fs::path FilePath = OutputPath;
 
 			if (this->GetNoFolders()) {
-				FilePath /= it->sFileName;
+				FilePath /= fs::u8path(it->sFileName);
 			} else {
-				FilePath /= it->sFilePath;
+				FilePath /= fs::u8path(it->sFilePath);
 			}
 
-			this->internalExtractFile(FilePath, this->GetPazName(it->uiPazNum), it->uiOffset, it->uiCompressedSize, it->uiOriginalSize);
-
+			bool written = this->internalExtractFile(FilePath, this->GetPazName(it->uiPazNum), it->uiOffset, it->uiCompressedSize, it->uiOriginalSize);
+			
 			if (bProgress) {
 				printProgress(); ///delete current line (progress bar)
 				bProgress = false;
 			}
-			if (!bIsQuiet) {
-				std::cout << "> " << it->sFilePath << " (size: " << it->uiOriginalSize << ")\n";
-			}
 
-			counter++;
+			count_filtered++;
+			if (written) {
+				count_written++;
+				if (!bIsQuiet)
+					std::cout << "> " << it->sFilePath << " (size: " << it->uiOriginalSize << ")\n";
+			}
+			
+
 		}
 		if (!this->GetQuiet()) {
 			bProgress = printProgress(it - this->vFilesTable.begin() + 1, this->vFilesTable.size(), "Searching: ") || bProgress;
@@ -138,10 +145,13 @@ uint32_t BDOFile::ExtractFileMask(std::string sFileMask, fs::path OutputPath)
 		if (bProgress) { ///delete current line (progress bar)
 			printProgress(); ///delete current line (progress bar)
 		}
-		std::cout << "\nExtracted files: " << counter << ", total files: " << this->vFilesTable.size() << std::endl;
+		std::cout << "Total files: " << this->vFilesTable.size() 
+			<< "\nFiltered: " << count_filtered
+			<< "\nWritten: " << count_written
+			<< std::endl;
 	}
 
-	return counter;
+	return count_filtered;
 }
 
 uint32_t BDOFile::List()
@@ -198,6 +208,16 @@ void BDOFile::SetQuiet(bool bQuiet)
 	this->bQuiet = bQuiet;
 }
 
+bool BDOFile::GetCompressed()
+{
+	return this->bCompressed;
+}
+
+void BDOFile::SetCompressed(bool bCompressed)
+{
+	this->bCompressed = bCompressed;
+}
+
 bool BDOFile::GetNoFolders()
 {
 	return this->bNoFolders;
@@ -244,10 +264,13 @@ void BDOFile::exitError(int errCode, std::string sDetail) {
 	switch (errCode) {
 	case -2:
 		std::cerr << "ERROR: Can't open file " << sDetail << std::endl;
+		break;
 	case -3:
 		std::cerr << "ERROR: Insufficient memory." << std::endl;
+		break;
 	case -4:
 		std::cerr << "ERROR: Invalid compressed size." << std::endl;
+		break;
 	default:
 		std::cerr << "ERROR: " << sDetail << " (code: " << errCode << ")." << std::endl;
 	}
@@ -328,7 +351,7 @@ fs::path BDOFile::GetPazName(uint32_t uiPazNum)
 }
 
 ///Private functions
-void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize)
+bool BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize)
 {
 	bool skip_decryption = FilePath.extension() == ".dbss";
 
@@ -353,10 +376,42 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 		}
 	}
 
+	///check if output file exists, ask user if he wants to overwrite it
+	if (!this->bOverwriteFiles) {
+		if (fs::exists(FilePath)) {
+			if (this->bSkipFiles) {
+				return false;
+			}
+			if (this->bRenameFiles) {
+				autoRenameFile(FilePath);
+			}
+			else {
+				switch (autoRenameFilePrompt(FilePath)) {
+					// options:
+					// (o)verwrite / (r)ename / (s)kip / 
+					// over(w)rite all / re(n)ame all / ski(p) all / (e)xit
+				case 'e':
+					exit(0);
+				case 'w':
+					this->bOverwriteFiles = true;
+					break;
+				case 'n':
+					this->bRenameFiles = true;
+					break;
+				case 'p':
+					this->bSkipFiles = true;
+					return false;
+				case 's':
+					return false;
+				}
+			}
+		}
+	}
+
 	if (uiCompressedSize == 0) { //just create empty file
-		std::ofstream ofsFile(FilePath.string(), std::ios::binary);
+		std::ofstream ofsFile(FilePath, std::ios::binary);
 		ofsFile.close();
-		return;
+		return true;
 	}
 	
 	std::ifstream ifsPazFile(PazName.string(), std::ios::binary);
@@ -364,27 +419,7 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 		this->exitError(-2, PazName.string());
 	}
 
-	///check if output file exists, ask user if he wants to overwrite it
-	if (!this->bOverwriteFiles) {
-		if (fs::exists(FilePath)) {
-			if (this->bRenameFiles) {
-				autoRenameFile(FilePath);
-			}
-			else {
-				switch (autoRenameFilePrompt(FilePath)) { ///options: (o)verwrite / (R)ename / overwrite (a)ll / re(n)ame all / (e)xit
-				case 'e':
-					exit(0);
-				case 'a':
-					this->bOverwriteFiles = true;
-					break;
-				case 'n':
-					this->bRenameFiles = true;
-				}
-			}
-		}
-	}
-
-	std::ofstream ofsFile(FilePath.string(), std::ios::binary);
+	std::ofstream ofsFile(FilePath, std::ios::binary);
 	if (!ofsFile.is_open()) {
 		this->exitError(-2, FilePath.string());
 	}
@@ -398,7 +433,7 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 		ofsFile.write(reinterpret_cast<char*>(buf), uiOriginalSize);
 		ofsFile.close();
 		delete[] buf;
-		return;
+		return true;
 	}
 
 	///decrypt data
@@ -415,6 +450,14 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 
 		delete[] encrypted;
 
+		if (this->GetCompressed()) {
+			ofsFile.write(reinterpret_cast<char*>(decrypted), uiCompressedSize);
+			ofsFile.close();
+
+			delete[] decrypted;
+			return true;
+		}
+
 		///check if data have header, valid header is 9 bytes long and contains:
 		///- ID (unit8_t) = 0x6E for uncompressed data or 0x6F for compressed data
 		///- data size (uint32_t)
@@ -423,7 +466,7 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 			uint32_t uiSize = 0;
 			memcpy(&uiSize, decrypted + 1 + 4, 4);	///copy original file size from decrypted data
 			if (uiSize == uiOriginalSize) {			///We can consider data header as valid. Size in data header is the same as size in .meta/.paz file.
-				uint8_t *decompressed = new uint8_t[uiOriginalSize];
+				uint8_t* decompressed = new uint8_t[uiOriginalSize];
 				if (decompressed == 0) exitError(-3);
 
 				BDO::decompress(decrypted, decompressed);
@@ -439,10 +482,10 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 			memcpy(&decomp_len, decrypted + 1 + 4, 4);
 			if (decomp_len == uiOriginalSize) {
 				uint8_t* decompressed = new uint8_t[uiOriginalSize];
-				if (decompressed == 0) 
+				if (decompressed == 0)
 					exitError(-3);
 
-				uint32_t ret = BDO::decompressEF(decrypted+9, decompressed, uiOriginalSize);
+				uint32_t ret = BDO::decompressEF(decrypted + 9, decompressed, uiOriginalSize);
 				if (ret != comp_len - 9)
 					exitError(-4);
 				delete[] decrypted;
@@ -472,12 +515,11 @@ void BDOFile::internalExtractFile(fs::path FilePath, fs::path PazName, uint32_t 
 		}
 	}
 
-
 	ofsFile.write(reinterpret_cast<char *>(decrypted), uiOriginalSize);
 	ofsFile.close();
 
 	delete[] decrypted;
-	
+	return true;
 }
 
 
@@ -623,8 +665,9 @@ void MetaFile::ReadSource(fs::path FileName)
 	ptr = pFileNamesDecrypted;
 	pEnd = ptr + uiFileNamesLength;
 	while (ptr < pEnd) {
-		vFileNames.push_back(reinterpret_cast<char *>(ptr));
-		ptr += vFileNames.back().length() + 1;
+		std::string filename = decode_filename(ptr);
+		if (!filename.empty())
+			vFileNames.push_back(filename);
 	}
 	delete[] pFileNamesDecrypted;
 

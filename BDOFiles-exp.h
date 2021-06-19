@@ -44,42 +44,46 @@ namespace BDO
 		///constructor
 		BDOFile();
 		///functions
-		void ExtractFile(std::experimental::filesystem::path FilePath, std::experimental::filesystem::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize);
-		uint32_t ExtractFileMask(std::string sFileMask, std::experimental::filesystem::path OutputPath);
+		void ExtractFile(std::filesystem::path FilePath, std::filesystem::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize);
+		uint32_t ExtractFileMask(std::string sFileMask, std::filesystem::path OutputPath);
 		uint32_t List();
 		uint32_t ListFileMask(std::string sFileMask);
 		bool GetQuiet();
 		void SetQuiet(bool bQuiet);
+		bool GetCompressed();
+		void SetCompressed(bool bCompressed);
 		bool GetNoFolders();
 		void SetNoFolders(bool bNoFolders);
 		bool GetYesToAll();
 		void SetYesToAll(bool bYesToAll);
 		bool GetMobile();
 		void SetMobile(bool bMobile);
-		std::experimental::filesystem::path GetArchivePath();
-		void SetArchivePath(std::experimental::filesystem::path ArchivePath);
+		std::filesystem::path GetArchivePath();
+		void SetArchivePath(std::filesystem::path ArchivePath);
 	protected:
 		///functions
 		void ICEdecrypt(uint8_t *encrypted, uint8_t *decrypted, uint32_t dataSize);
 		void ICEencrypt(uint8_t *decrypted, uint8_t *encrypted, uint32_t dataSize);
 		void exitError(int errCode, std::string sDetail);
 		void exitError(int errCode);
-		std::experimental::filesystem::path GetPazName(uint32_t uiPazNum);
+		std::filesystem::path GetPazName(uint32_t uiPazNum);
 		///variables
 		std::vector<FileEntry> vFilesTable;
-		std::map<uint32_t, std::experimental::filesystem::path> mPazNames;
+		std::map<uint32_t, std::filesystem::path> mPazNames;
 	private:
 		///functions
-		void internalExtractFile(std::experimental::filesystem::path FilePath, std::experimental::filesystem::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize);
+		bool internalExtractFile(std::filesystem::path FilePath, std::filesystem::path PazName, uint32_t uiOffset, uint32_t uiCompressedSize, uint32_t uiOriginalSize);
 		///variables
         bool bQuiet;
+		bool bCompressed;
         bool bNoFolders;
         bool bYesToAll;
         bool bRenameFiles;
         bool bOverwriteFiles;
+		bool bSkipFiles;
         bool bCreatePath;
 		bool bMobile;
-		std::experimental::filesystem::path ArchivePath;
+        std::filesystem::path ArchivePath;
 	};
 
 
@@ -89,7 +93,7 @@ namespace BDO
 	public:
 		///constructors
 		MetaFile();
-		MetaFile(std::experimental::filesystem::path FileName, bool bQuiet);
+		MetaFile(std::filesystem::path FileName, bool bQuiet);
 		///functions
 		uint32_t GetClientVersion();
 		uint32_t GetFilesCount();
@@ -97,7 +101,7 @@ namespace BDO
 		uint32_t GetFoldersCount();
 	protected:
 		///functions
-		void ReadSource(std::experimental::filesystem::path FileName);
+		void ReadSource(std::filesystem::path FileName);
 	private:
 		///variables
 		uint32_t uiClientVersion;
@@ -113,13 +117,13 @@ namespace BDO
 	public:
 		///constructors
 		PazFile();
-		PazFile(std::experimental::filesystem::path FileName, bool bQuiet);
+		PazFile(std::filesystem::path FileName, bool bQuiet);
 		///functions
 		uint32_t GetPazHash();
 		uint32_t GetFilesCount();
 	protected:
 		///functions
-		void ReadSource(std::experimental::filesystem::path FileName);
+		void ReadSource(std::filesystem::path FileName);
 	private:
 		///variables
 		uint32_t uiPazHash;
