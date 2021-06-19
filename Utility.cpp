@@ -186,7 +186,7 @@ char autoRenameFilePrompt(fs::path &FilePath)
 	std::string sUserInput;
 	char c;
 
-	std::cerr << "\nFile \"" << FilePath.filename().string() 
+	std::cerr << "\nFile \"" << FilePath.filename().u8string()
 		<< "\" already exists in target path.\n"
 		<< "> (o)verwrite / (r)ename / (s)kip /"
 		<< " over(w)rite all / re(n)ame all / ski(p) all / (e)xit " << std::endl;
