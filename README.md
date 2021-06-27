@@ -19,5 +19,5 @@ UnPAZ pad00001.paz -f *.luac
 UnPAZ pad00000.meta -y -f *languagedata_??.txt -o Extracted
 ```
 ```
-UnPAZ D:\Games\BlackDesert\Paz\pad00000.meta -l
+UnPAZ pad00000.meta -l
 ```
