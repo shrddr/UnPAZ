@@ -8,6 +8,7 @@ namespace fs = std::filesystem;
 
 namespace fs = boost::filesystem;
 #endif
+#include "Encoding.h"
 
 using namespace BDO;
 
@@ -110,9 +111,14 @@ uint32_t BDOFile::ExtractFileMask(std::string sFileMask, fs::path OutputPath)
 			fs::path FilePath = OutputPath;
 
 			if (this->GetNoFolders()) {
-				FilePath /= fs::u8path(it->sFileName);
+				//FilePath /= fs::u8path(it->sFileName);
+				// to output korean characters correctly on english windows
+				std::string utf = MBstr_to_UTFstr_WinAPI(it->sFileName);
+				FilePath /= fs::u8path(utf);
 			} else {
-				FilePath /= fs::u8path(it->sFilePath);
+				//FilePath /= fs::u8path(it->sFilePath);
+				std::string utf = MBstr_to_UTFstr_WinAPI(it->sFilePath);
+				FilePath /= fs::u8path(utf);
 			}
 
 			bool written = this->internalExtractFile(FilePath, this->GetPazName(it->uiPazNum), it->uiOffset, it->uiCompressedSize, it->uiOriginalSize);

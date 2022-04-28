@@ -57,16 +57,16 @@ std::string MBstr_to_UTFstr_WinAPI(std::string multibyte_str) {
 
 std::string decode_filename(uint8_t*& ptr) {
 	
-	std::string naive = std::string(reinterpret_cast<char*>(ptr));
-	ptr += naive.length() + 1;
+	std::string native = std::string(reinterpret_cast<char*>(ptr));
+	ptr += native.length() + 1;
 
-	// just assume everything is ASCII
-	//return naive;
+	// leave as is
+	return native;
 
-	// output eveything outside ASCII range as hex
+	// convert everything outside ASCII range as hex
 	//return hexify(naive);
 
 	// convert CP949 string to UTF string
-	return MBstr_to_UTFstr_WinAPI(naive);
+	//return MBstr_to_UTFstr_WinAPI(naive);
 }
 
