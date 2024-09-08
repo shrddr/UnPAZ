@@ -31,12 +31,10 @@
 *.out
 *.app
 
-/Debug
-/x64/Debug
-/CppProperties.json
+# VS
+/vcpkg_installed
+/intermediate
+/bin
 /.vs
-*.sln
-*.vcxproj
 *.filters
 *.user
-/Release
